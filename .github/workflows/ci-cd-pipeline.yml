@@ -40,4 +40,5 @@ jobs:
       - name: Bygg och kör tester
         env:
           OPENAI_API_KEY: dummy-test-key-anvands-endast-i-ci
+          APP_API_KEY: dummy-app-key-anvands-endast-i-ci
         run: mvn test
