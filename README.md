@@ -94,3 +94,44 @@ förstörde hela build-konfigurationen (output path, language level, allt).
 Löste det enklast genom att packa upp projektet på nytt från en tidigare
 sparad version och sätta in nyckeln igen, istället för att fixa varje
 trasig inställning manuellt.
+
+
+
+## Labb 2k5 - DevOps, CI/CD & Applikationssäkerhet
+
+Bygger vidare på appen från Labb 1k5 med containerisering, en automatisk
+CI-pipeline och en grundläggande säkerhetsanalys baserad på OWASP Top 10.
+Precis som i 1k5 siktar jag här på G, inte VG.
+
+### Steg 1: Containerisering (Docker)
+
+Appen paketeras med en `Dockerfile` som använder en multi-stage build:
+1. Ett byggsteg med Maven + JDK 21 som kompilerar koden till en `.jar`-fil.
+2. Ett körsteg med bara en minimal JRE (`eclipse-temurin:21-jre-alpine`)
+   som kör den färdiga `.jar`-filen.
+
+Fördelen är att den slutgiltiga imagen inte innehåller Maven, källkod eller
+byggverktyg - bara det som faktiskt behövs för att köra appen.
+
+### Steg 2: CI-pipeline (GitHub Actions)
+
+`.github/workflows/ci-cd-pipeline.yml` körs automatiskt vid varje push och
+pull request mot `main`. Pipelinen sätter upp Java 21 och kör `mvn test`.
+Eftersom `AiClientService` fail-fast-kontrollerar API-nyckeln vid uppstart
+(se Labb 1k5), sätter pipelinen dummy-värden för både `OPENAI_API_KEY` och
+`APP_API_KEY` så att Spring-kontexten kan starta i test-miljön utan att
+några riktiga hemligheter behöver finnas i GitHub.
+
+### Steg 4 & 5: Säkerhetsanalys och åtgärder
+
+En fullständig genomgång med identifierade sårbarheter, varför de är
+farliga, och hur de åtgärdats finns i **`Security-OWASP.md`**. Kort
+sammanfattat:
+
+| # | OWASP-kategori | Brist | Åtgärd |
+|---|-----------------|-------|--------|
+| 1 | A01: Broken Access Control | `/api/ai/ask` var helt öppen - vem som helst kunde spamma anrop och dränera AI-budgeten | Endpointen kräver nu en hemlig nyckel i headern `X-API-Key` |
+| 2 | A04: Insecure Design | Inget maxvärde på hur lång text som fick skickas in | `@Size(max = 2000)` på `message`-fältet |
+
+Den nya nyckeln (`app.api.key` / miljövariabeln `APP_API_KEY`) hanteras på
+samma säkra sätt som OpenAI-nyckeln - laddas via `@Value`, aldrig hårdkodad.
