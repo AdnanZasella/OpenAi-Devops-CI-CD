@@ -1,0 +1,43 @@
+# Namnet som visas i GitHub Actions-fliken
+name: CI Pipeline
+
+# NÄR ska den här pipelinen köras?
+# - Vid push till main-branchen
+# - Vid pull request mot main-branchen
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    # Kör på en färsk virtuell Ubuntu-maskin som GitHub tillhandahåller gratis
+    runs-on: ubuntu-latest
+
+    steps:
+      # Steg 1: Hämta koden från repot in i den virtuella maskinen
+      - name: Checka ut koden
+        uses: actions/checkout@v4
+
+      # Steg 2: Installera rätt Java-version (samma som i Dockerfile)
+      - name: Sätt upp Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven   # Cachar Maven-beroenden mellan körningar -> snabbare bygg
+
+      # Steg 3: Kör de automatiska testerna
+      # Om något test failar, stoppar Actions här och markerar jobbet som "failed" (röd kryss)
+      #
+      # OBS: Vi sätter en FALSK OPENAI_API_KEY här, bara för att
+      # AiClientServices fail-fast-kontroll (@PostConstruct) ska
+      # godkänna att en nyckel finns, så att Spring-kontexten kan
+      # starta under testet. Detta är INTE en riktig nyckel och
+      # gör INGA riktiga anrop till OpenAI - testet kontrollerar
+      # bara att applikationen startar korrekt.
+      - name: Bygg och kör tester
+        env:
+          OPENAI_API_KEY: dummy-test-key-anvands-endast-i-ci
+        run: mvn test
